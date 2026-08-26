@@ -1,0 +1,26 @@
+{
+  "name": "blockchain-ghg-mrv-smart-contract",
+  "version": "1.0.0",
+  "description": "A blockchain-based Monitoring, Reporting and Verification (MRV) solution for maintaining transparent, tamper-resistant and auditable greenhouse gas (GHG) emissions records.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/snelypops/Blockchain-GHG-MRV-Smart-Contract.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/snelypops/Blockchain-GHG-MRV-Smart-Contract/issues"
+  },
+  "homepage": "https://github.com/snelypops/Blockchain-GHG-MRV-Smart-Contract#readme",
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "hardhat": "^3.14.0",
+    "typescript": "~6.0.3"
+  },
+  "type": "module"
+}
