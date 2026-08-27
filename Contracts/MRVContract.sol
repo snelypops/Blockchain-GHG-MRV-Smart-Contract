@@ -200,7 +200,6 @@ contract MRVContract {
         return emissionsRecords[_facilityId].length;
     }
 
-
     function getEmissionsRecord(
         uint256 _facilityId,
         uint256 _recordIndex

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GHG Emissions MRV System</title>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
+<style>
+body{font-family:Arial,sans-serif;background:#f4f6f8;margin:0;color:#17202a}
+.container{max-width:1050px;margin:35px auto;padding:0 18px}
+header{background:#17202a;color:white;padding:26px;border-radius:14px;margin-bottom:18px}
+h1{margin:0 0 8px;font-size:28px} h2{font-size:19px;margin-top:0}
+.card{background:white;border-radius:14px;padding:22px;margin:16px 0;box-shadow:0 2px 10px #00000012}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+label{display:block;font-size:13px;font-weight:bold;margin:12px 0 6px}
+input{width:100%;box-sizing:border-box;padding:11px;border:1px solid #ccd2d8;border-radius:8px}
+button{padding:11px 16px;border:0;border-radius:8px;cursor:pointer;font-weight:bold;margin-top:14px}
+.connect{background:#2d6cdf;color:white}.action{background:#17202a;color:white}
+.status{padding:10px;border-radius:8px;background:#eef2f6;margin-top:12px;word-break:break-word}
+.result{background:#f7f9fb;padding:14px;border-radius:8px;margin-top:14px;line-height:1.7;word-break:break-word}
+small{opacity:.75}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>GHG Emissions MRV System</h1>
+<div>Blockchain-based Monitoring, Reporting and Verification</div>
+</header>
+
+<div class="card">
+<h2>Wallet Connection</h2>
+<button class="connect" onclick="connectWallet()">Connect MetaMask</button>
+<div id="wallet" class="status">Not connected</div>
+</div>
+
+<div class="grid">
+<section class="card">
+<h2>Admin — Facility Management</h2>
+<label>Facility name</label><input id="facilityName" placeholder="ABC Manufacturing">
+<label>Location</label><input id="location" placeholder="Johannesburg">
+<button class="action" onclick="registerFacility()">Register Facility</button>
+
+<label>Reporter address</label><input id="reporter" placeholder="0x...">
+<button class="action" onclick="authoriseReporter()">Authorise Reporter</button>
+
+<label>Auditor address</label><input id="auditor" placeholder="0x...">
+<button class="action" onclick="authoriseAuditor()">Authorise Auditor</button>
+</section>
+
+<section class="card">
+<h2>Reporter — Submit Emissions</h2>
+<label>Facility ID</label><input id="facilityIdSubmit" value="1">
+<label>Report hash</label><input id="reportHash" placeholder="0x... 64 hex characters">
+<label>Reporting period</label><input id="period" placeholder="2026">
+<button class="action" onclick="submitReport()">Submit Emissions Report</button>
+</section>
+</div>
+
+<section class="card">
+<h2>Auditor — Verify Record</h2>
+<label>Facility ID</label><input id="facilityIdRead" value="1">
+<label>Record index</label><input id="recordIndex" value="0">
+<button class="action" onclick="getRecord()">Retrieve Emissions Record</button>
+<div id="record" class="result">No record retrieved.</div>
+</section>
+
+<section class="card">
+<h2>Contract</h2>
+<div class="status"><b>MRVContract:</b><br>0x5FbDB2315678afecb367f032d93F642f64180aa3</div>
+<small>Network: Hardhat Local (Chain ID 31337) · RPC: http://127.0.0.1:8545</small>
+</section>
+
+<div id="status" class="status">Ready.</div>
+</div>
+
+<script>
+const CONTRACT_ADDRESS="0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const ABI=[
+"function registerFacility(string _name,string _location) external returns(uint256)",
+"function authoriseReporter(address _reporter) external",
+"function authoriseAuditor(address _auditor) external",
+"function submitEmissionsRecord(uint256 _facilityId,bytes32 _reportHash,uint256 _reportingPeriod) external",
+"function getEmissionsRecord(uint256 _facilityId,uint256 _recordIndex) external view returns(uint256 facilityId,bytes32 reportHash,uint256 reportingPeriod,uint256 timestamp,address submittedBy)",
+"function getFacility(uint256 _facilityId) external view returns(uint256 facilityId,string name,string location,bool active)"
+];
+let provider,signer,contract;
+
+function msg(t){document.getElementById("status").textContent=t}
+
+async function connectWallet(){
+ if(!window.ethereum){msg("MetaMask is not installed.");return}
+ provider=new ethers.BrowserProvider(window.ethereum);
+ signer=await provider.getSigner();
+ contract=new ethers.Contract(CONTRACT_ADDRESS,ABI,signer);
+ const addr=await signer.getAddress();
+ const net=await provider.getNetwork();
+ document.getElementById("wallet").innerHTML="<b>Connected:</b> "+addr+"<br><b>Chain ID:</b> "+net.chainId;
+ msg("Wallet connected. Make sure MetaMask is on Hardhat Local.");
+}
+
+async function ensure(){if(!contract) await connectWallet(); if(!contract) throw new Error("Connect MetaMask first.");}
+
+async function send(fn){
+ await ensure(); msg("Confirm the transaction in MetaMask...");
+ const tx=await fn();
+ msg("Transaction submitted: "+tx.hash);
+ await tx.wait();
+ msg("Transaction confirmed: "+tx.hash);
+}
+
+async function registerFacility(){
+ try{
+  await send(()=>contract.registerFacility(document.getElementById("facilityName").value,document.getElementById("location").value));
+ }catch(e){msg("Error: "+(e.shortMessage||e.message))}
+}
+async function authoriseReporter(){
+ try{await send(()=>contract.authoriseReporter(document.getElementById("reporter").value))}
+ catch(e){msg("Error: "+(e.shortMessage||e.message))}
+}
+async function authoriseAuditor(){
+ try{await send(()=>contract.authoriseAuditor(document.getElementById("auditor").value))}
+ catch(e){msg("Error: "+(e.shortMessage||e.message))}
+}
+async function submitReport(){
+ try{
+  const hash=document.getElementById("reportHash").value;
+  if(!/^0x[0-9a-fA-F]{64}$/.test(hash)) throw new Error("Report hash must be 0x followed by 64 hexadecimal characters.");
+  await send(()=>contract.submitEmissionsRecord(
+   document.getElementById("facilityIdSubmit").value,
+   hash,
+   document.getElementById("period").value
+  ));
+ }catch(e){msg("Error: "+(e.shortMessage||e.message))}
+}
+async function getRecord(){
+ try{
+  await ensure();
+  msg("Reading the blockchain...");
+  const r=await contract.getEmissionsRecord(document.getElementById("facilityIdRead").value,document.getElementById("recordIndex").value);
+  document.getElementById("record").innerHTML=
+   "<b>Facility ID:</b> "+r[0]+"<br>"+
+   "<b>Report Hash:</b> "+r[1]+"<br>"+
+   "<b>Reporting Period:</b> "+r[2]+"<br>"+
+   "<b>Timestamp:</b> "+r[3]+"<br>"+
+   "<b>Submitted By:</b> "+r[4];
+  msg("Record retrieved from the blockchain.");
+ }catch(e){msg("Error: "+(e.shortMessage||e.message))}
+}
+</script>
+</body>
+</html>
